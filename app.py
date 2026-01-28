@@ -39,6 +39,11 @@ if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
 def keep_alive():
     return jsonify({"status": "alive", "timestamp": time.time()})
 
+@app.route('/')
+def index():
+    return jsonify({"status": "online", "message": "Backend do Marcelinho funcionando!"})
+
+
 # Configure for local development
 app.config['SECRET_KEY'] = 'dev_secret_key'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -52,16 +57,24 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
     # Seed Admin if not exists
-    if not User.query.filter_by(email='admin@123').first():
-        # User requested specific credentials: admin@123 / Marionete12
+    # Ensure Admin exists or update password if needed
+    admin = User.query.filter_by(email='admin@123').first()
+    if not admin:
         admin = User(email='admin@123', password=generate_password_hash('Marionete12'))
         db.session.add(admin)
         db.session.commit()
-        # Role
+    else:
+        # Optional: Reset password on restart to ensure it matches hardcoded value
+        admin.password = generate_password_hash('Marionete12')
+        db.session.commit()
+        
+    # Ensure role
+    if not UserRole.query.filter_by(user_id=admin.id, role='admin').first():
         role = UserRole(user_id=admin.id, role='admin')
         db.session.add(role)
         db.session.commit()
-        print("Admin seeded: admin@123 / Marionete12")
+        
+    print("Admin seeded/updated: admin@123 / Marionete12")
 
 # --- Auth Routes ---
 
